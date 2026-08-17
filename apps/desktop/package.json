@@ -1,0 +1,51 @@
+{
+  "name": "@linktran/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "predev": "npm run vendor --workspace @linktran/web",
+    "dev": "electron .",
+    "prebuild": "npm run vendor --workspace @linktran/web",
+    "build": "electron-builder --dir",
+    "prebuild:mac": "npm run vendor --workspace @linktran/web",
+    "build:mac": "electron-builder --mac --x64 --arm64",
+    "prebuild:win": "npm run vendor --workspace @linktran/web",
+    "build:win": "electron-builder --win --x64",
+    "verify:win": "node scripts/verify-windows-build.mjs"
+  },
+  "build": {
+    "appId": "com.linktran.desktop",
+    "productName": "邻传",
+    "asar": true,
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [
+      { "from": "../../server.js", "to": "lan-host/server.js" },
+      { "from": "../../storage.js", "to": "lan-host/storage.js" },
+      { "from": "../../public", "to": "lan-host/public" }
+    ],
+    "directories": { "output": "../../dist/desktop" },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "artifactName": "Linktran-${version}-Windows-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "邻传",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

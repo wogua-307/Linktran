@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "邻传",
+  "version": "0.1.0",
+  "description": "电脑浏览器之间的消息、网页与文件快速互传",
+  "permissions": ["storage", "notifications", "tabs", "contextMenus"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "邻传" }
+}

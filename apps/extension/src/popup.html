@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>邻传</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header><div class="logo">⇄</div><div><h1>邻传</h1><p>浏览器快速互传</p></div></header>
+  <main>
+    <label><span>设备昵称</span><input id="deviceName" maxlength="30" placeholder="我的电脑"></label>
+    <button id="saveProfile" class="secondary">保存设备资料</button>
+    <section class="status"><i></i><div><strong>本地存储已就绪</strong><small>IndexedDB 持久化</small></div><b id="messageCount">0</b></section>
+    <button id="savePage" class="primary">保存当前网页</button>
+    <p id="feedback" role="status"></p>
+  </main>
+  <script src="db.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

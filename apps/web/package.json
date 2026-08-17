@@ -1,0 +1,11 @@
+{
+  "name": "@linktran/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "vendor": "node scripts/sync-vendor.mjs",
+    "predev": "npm run vendor",
+    "dev": "node ../../server.js",
+    "build": "node scripts/build.mjs"
+  }
+}

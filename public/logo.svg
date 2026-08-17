@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="邻传">
+  <rect width="512" height="512" rx="112" fill="#20231f"/>
+  <circle cx="160" cy="256" r="82" fill="#e2f0e9"/>
+  <circle cx="352" cy="256" r="82" fill="#ffffff"/>
+  <path d="M158 222h160l-35-35" fill="none" stroke="#28785d" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M354 290H194l35 35" fill="none" stroke="#e86f43" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="160" cy="256" r="18" fill="#28785d"/>
+  <circle cx="352" cy="256" r="18" fill="#e86f43"/>
+</svg>

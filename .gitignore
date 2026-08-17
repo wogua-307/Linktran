@@ -1,0 +1,7 @@
+uploads/
+data/
+.DS_Store
+node_modules/
+dist/
+apps/extension/dist/
+*.log
