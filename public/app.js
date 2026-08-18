@@ -43,6 +43,15 @@ function formatSize(bytes) {
   return `${(bytes / 1073741824).toFixed(1)} GB`;
 }
 function showToast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.remove('show'), 2200); }
+async function copyText(text) {
+  if (navigator.clipboard?.writeText && globalThis.isSecureContext) return navigator.clipboard.writeText(text);
+  const input = document.createElement('textarea');
+  input.value = text; input.setAttribute('readonly', '');
+  input.style.position = 'fixed'; input.style.opacity = '0';
+  document.body.append(input); input.select();
+  const copied = document.execCommand('copy'); input.remove();
+  if (!copied) throw new Error('复制失败，请手动选择消息内容');
+}
 function totalUnread() { return [...unreadCounts.values()].reduce((total, count) => total + count, 0); }
 function updateDocumentTitle() {
   const unread = totalUnread(); document.title = unread ? `(${unread}) 邻传` : '邻传';
@@ -214,10 +223,14 @@ function renderEvent(item) {
   const extension = item.type === 'file' ? (item.file.name.split('.').pop() || 'FILE').slice(0, 4) : '';
   const content = item.type === 'file'
     ? `<a class="file-card" href="${item.file.url}"><span class="file-icon">${escapeHtml(extension)}</span><span class="file-details"><strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small></span><span class="download">↓</span></a>`
-    : `<div class="bubble markdown-body">${LinktranMarkdown.render(item.text)}</div>`;
+    : `<div class="bubble"><div class="markdown-body">${LinktranMarkdown.render(item.text)}</div><div class="message-actions"><button class="copy-message" type="button" title="复制消息" aria-label="复制消息">⧉</button></div></div>`;
   const article = document.createElement('article');
   article.className = `event${mine ? ' mine' : ''}`;
   article.innerHTML = `${avatarHtml(sender, 'event-avatar')}<div class="event-body"><div class="event-meta"><strong>${escapeHtml(mine ? '我' : sender.name)}</strong><time>${formatTime(item.time)}</time></div>${content}</div>`;
+  article.querySelector('.copy-message')?.addEventListener('click', async () => {
+    try { await copyText(item.text); showToast('消息已复制'); }
+    catch (error) { showToast(error.message); }
+  });
   $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
 }
 
