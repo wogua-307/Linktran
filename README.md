@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Commercial use](https://img.shields.io/badge/Commercial%20use-Allowed-brightgreen.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933.svg)](package.json)
+[![Platforms](https://img.shields.io/badge/Platforms-Web%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](#三端独立运行)
 
 邻传是一个面向办公室、家庭和临时协作场景的局域网消息与文件传输工具。服务启动后，同一 Wi-Fi 或同一局域网内的手机、平板和电脑可以通过浏览器访问，无需注册账号，也不依赖公网服务。
 
@@ -14,17 +16,19 @@
 - 共享空间、设备单聊和多人群聊
 - 每个会话独立保存消息与文件记录
 - 在线设备发现和实时消息推送
+- 自动识别桌面客户端、电脑 Web、移动端及 macOS、Windows、Linux、iOS、Android
 - 文件选择、批量发送和拖拽上传，单文件上限 1 GB
 - 自定义设备昵称和头像
 - 群成员头像组合展示
 - 会话未读计数、页面标题提醒和系统通知
 - Emoji 输入
 - Markdown 消息渲染，支持 GFM 表格、任务列表和代码块
+- 消息气泡快捷复制，设备资料变化时局部更新，不打断当前消息浏览位置
 - 从网页、Word、飞书等来源粘贴富文本时自动转换为 Markdown
 - SQLite 持久化，服务重启后保留资料、会话和消息
 - 响应式布局，可通过手机和平板浏览器使用
-- 桌面端展示局域网连接二维码，手机扫码即可加入
-- macOS/Windows 系统托盘，关闭窗口后服务继续运行
+- Web/桌面端展示局域网连接二维码，手机扫码即可加入
+- macOS/Windows 桌面客户端支持系统托盘，关闭窗口后服务继续运行
 
 ### 浏览器扩展
 
@@ -65,6 +69,8 @@ Chrome/Edge Manifest V3 扩展目前提供基础能力：
 | Markdown | marked |
 | HTML 安全过滤 | DOMPurify |
 | 富文本转 Markdown | Turndown、turndown-plugin-gfm |
+| 界面图标 | Lucide |
+| 手机连接二维码 | node-qrcode |
 | 桌面客户端 | Electron、electron-builder |
 | 浏览器扩展 | Chrome Extension Manifest V3、IndexedDB |
 | 项目组织 | npm workspaces |
@@ -90,7 +96,7 @@ npm --version
 ## 安装与启动
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/wogua-307/Linktran.git
 cd Linktran
 npm install
 npm run dev:web
@@ -104,7 +110,7 @@ npm run dev:web
 数据文件: /path/to/Linktran/data/linchuan.db
 ```
 
-本机可以打开 `http://localhost:9527`。其他设备连接同一 Wi-Fi 后，打开终端显示的局域网地址。
+本机可以打开 `http://localhost:9527`。其他设备连接同一 Wi-Fi 后，可以打开终端显示的局域网地址，也可以点击页面右上角“手机连接”并扫描二维码加入。
 
 ## 三端独立运行
 
@@ -243,7 +249,7 @@ uploads/
 
 SQLite 中保存：
 
-- 设备 ID、昵称和头像
+- 设备 ID、昵称、头像、系统平台和访问端类型
 - 会话类型、名称和成员关系
 - 文本消息及其顺序
 - 文件消息的原始名称、大小和下载地址
@@ -282,6 +288,8 @@ Markdown 原文 -> marked -> DOMPurify -> 消息气泡
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 服务健康检查 |
+| `GET` | `/api/network` | 获取当前主机可用的局域网访问地址 |
+| `GET` | `/api/qrcode?url=<networkUrl>` | 为有效的局域网地址生成连接二维码 |
 | `GET` | `/api/events?id=<deviceId>` | 建立 SSE 连接，接收初始化、在线状态和消息事件 |
 | `POST` | `/api/profile` | 新增或更新设备资料 |
 | `POST` | `/api/chats` | 创建单聊或群聊 |
@@ -364,6 +372,10 @@ curl http://127.0.0.1:9527/api/health
 ### 数据没有同步
 
 确认所有设备访问的是完全相同的主机 IP 和端口。分别启动的两个 Linktran 服务拥有独立数据库，不会自动合并。
+
+### 在线设备显示“未知系统”
+
+旧数据库会自动增加平台和访问端字段，不需要清库。设备下次刷新或重新打开客户端时会重新上报资料，之后在线设备列表会显示对应的系统和客户端类型。
 
 ## 当前限制
 
