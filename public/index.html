@@ -34,7 +34,7 @@
       <header class="chat-header">
         <button class="icon-button mobile-info" id="toggleSidebar" title="打开会话列表" aria-label="打开会话列表">☰</button>
         <div class="chat-heading"><h1 id="chatTitle">共享空间</h1><p id="chatSubtitle">所有在线设备</p></div>
-        <span class="header-spacer"></span>
+        <button class="connect-button" id="openConnect" type="button" title="手机扫码连接"><span aria-hidden="true">▦</span><b>手机连接</b></button>
       </header>
       <div id="messages" class="messages"></div>
       <div class="drop-hint" id="dropHint"><strong>松开发送到当前会话</strong></div>
@@ -73,11 +73,24 @@
     </form>
   </dialog>
 
+  <dialog id="connectDialog" class="modal connect-modal">
+    <form method="dialog">
+      <header><div><h2>手机连接</h2><p>手机与电脑需连接同一个 Wi-Fi</p></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></header>
+      <div class="connect-content">
+        <img id="connectQr" class="connect-qr" alt="手机连接二维码" width="240" height="240">
+        <label class="field connect-address-field"><span>局域网地址</span><select id="connectAddress" aria-label="选择局域网地址"></select></label>
+        <div class="connect-link"><code id="connectLink"></code><button id="copyConnectLink" type="button" title="复制连接地址" aria-label="复制连接地址">⧉</button></div>
+      </div>
+      <footer><button value="cancel" class="primary">完成</button></footer>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast"></div>
   <script src="/vendor/marked.umd.js"></script>
   <script src="/vendor/purify.min.js"></script>
   <script src="/vendor/turndown.umd.js"></script>
   <script src="/vendor/turndown-plugin-gfm.js"></script>
+  <script src="/vendor/lucide.min.js"></script>
   <script src="/markdown.js"></script>
   <script src="/rich-paste.js"></script>
   <script src="/app.js"></script>

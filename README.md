@@ -1,5 +1,8 @@
 # 邻传 Linktran
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Commercial use](https://img.shields.io/badge/Commercial%20use-Allowed-brightgreen.svg)](LICENSE)
+
 邻传是一个面向办公室、家庭和临时协作场景的局域网消息与文件传输工具。服务启动后，同一 Wi-Fi 或同一局域网内的手机、平板和电脑可以通过浏览器访问，无需注册账号，也不依赖公网服务。
 
 > 当前版本采用“一个局域网服务节点 + 多个访问端”的架构，不是设备之间的 P2P 直连。所有需要互通的设备必须连接到同一个邻传服务地址。
@@ -20,6 +23,8 @@
 - 从网页、Word、飞书等来源粘贴富文本时自动转换为 Markdown
 - SQLite 持久化，服务重启后保留资料、会话和消息
 - 响应式布局，可通过手机和平板浏览器使用
+- 桌面端展示局域网连接二维码，手机扫码即可加入
+- macOS/Windows 系统托盘，关闭窗口后服务继续运行
 
 ### 浏览器扩展
 
@@ -163,7 +168,7 @@ npm run build:mac
 - Intel `x64`：DMG、ZIP
 - Apple Silicon `arm64`：DMG、ZIP
 
-产物位于 `dist/desktop`。正式分发前应配置 Apple Developer ID 签名和公证，否则 Gatekeeper 可能显示安全警告。
+产物按版本与架构归档到 `dist/desktop/<版本>/mac-x64` 和 `dist/desktop/<版本>/mac-arm64`。正式分发前应配置 Apple Developer ID 签名和公证，否则 Gatekeeper 可能显示安全警告。
 
 ### Windows
 
@@ -178,6 +183,7 @@ npm run verify:win
 - 免安装 `.zip`
 
 `verify:win` 会检查 `邻传.exe`、`ffmpeg.dll` 和 `resources.pak` 是否完整。正式对外分发前应配置 Windows 代码签名证书，否则 SmartScreen 可能提示“未知发布者”。
+Windows 产物归档到 `dist/desktop/<版本>/windows`。`build:desktop` 生成的当前平台解包目录位于 `dist/desktop/<版本>/.build`。
 
 ### 浏览器扩展
 
@@ -198,6 +204,7 @@ npm run build:extension
 | `npm run dev:lan-host` | 单独启动局域网服务 |
 | `npm run build:web` | 构建 Web 静态资源 |
 | `npm run build:desktop` | 构建当前平台的桌面目录 |
+| `npm run build:icons` | 从 Web Logo 生成 macOS、Windows 桌面图标 |
 | `npm run build:mac` | 构建 macOS x64/arm64 安装包 |
 | `npm run build:win` | 构建 Windows x64 安装包 |
 | `npm run verify:win` | 校验 Windows 运行时文件 |
@@ -379,3 +386,16 @@ npm run build:extension
 ```
 
 涉及桌面端时，再按目标平台运行对应构建。不要提交 `data/`、`uploads/`、`dist/`、`node_modules/` 或扩展构建目录。
+
+## 开源许可与商用
+
+邻传自身代码采用 [MIT License](LICENSE) 开源，允许：
+
+- 个人或公司免费使用，包括商业用途
+- 修改源码、二次开发和内部部署
+- 复制、分发、再许可或销售包含本项目的产品
+- 在闭源商业产品中集成
+
+使用或分发时必须保留原始版权声明和 MIT 许可证文本。本项目按“原样”提供，不包含任何明示或暗示的担保。
+
+项目依赖的第三方组件继续遵循各自许可证，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。“允许商用”不等于包含商标授权、技术支持、代码签名证书或合规担保，使用方仍需自行评估其业务场景和所在地区的法律要求。

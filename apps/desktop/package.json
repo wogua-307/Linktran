@@ -1,17 +1,22 @@
 {
   "name": "@linktran/desktop",
+  "productName": "邻传",
   "version": "1.0.0",
+  "description": "同一 Wi-Fi 下的消息与文件传输工具",
+  "author": "wogua-307",
+  "license": "MIT",
   "private": true,
   "main": "main.js",
   "scripts": {
-    "predev": "npm run vendor --workspace @linktran/web",
+    "icons": "node scripts/build-icons.mjs",
+    "predev": "npm run icons && npm run vendor --workspace @linktran/web",
     "dev": "electron .",
-    "prebuild": "npm run vendor --workspace @linktran/web",
-    "build": "electron-builder --dir",
-    "prebuild:mac": "npm run vendor --workspace @linktran/web",
-    "build:mac": "electron-builder --mac --x64 --arm64",
-    "prebuild:win": "npm run vendor --workspace @linktran/web",
-    "build:win": "electron-builder --win --x64",
+    "prebuild": "npm run icons && npm run vendor --workspace @linktran/web",
+    "build": "node scripts/build-desktop.mjs dir",
+    "prebuild:mac": "npm run icons && npm run vendor --workspace @linktran/web",
+    "build:mac": "node scripts/build-desktop.mjs mac",
+    "prebuild:win": "npm run icons && npm run vendor --workspace @linktran/web",
+    "build:win": "node scripts/build-desktop.mjs win",
     "verify:win": "node scripts/verify-windows-build.mjs"
   },
   "build": {
@@ -22,21 +27,21 @@
     "extraResources": [
       { "from": "../../server.js", "to": "lan-host/server.js" },
       { "from": "../../storage.js", "to": "lan-host/storage.js" },
-      { "from": "../../public", "to": "lan-host/public" }
+      { "from": "../../public", "to": "lan-host/public" },
+      { "from": "build/icons/icon-32.png", "to": "tray-icon.png" },
+      { "from": "../../node_modules/qrcode", "to": "lan-host/node_modules/qrcode" },
+      { "from": "../../node_modules/dijkstrajs", "to": "lan-host/node_modules/dijkstrajs" },
+      { "from": "../../node_modules/pngjs", "to": "lan-host/node_modules/pngjs" }
     ],
-    "directories": { "output": "../../dist/desktop" },
+    "directories": { "output": "../../dist/desktop/${version}/.build", "buildResources": "build" },
     "mac": {
+      "icon": "build/icons/icon.icns",
       "category": "public.app-category.productivity",
-      "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
-      ]
+      "target": ["dmg", "zip"]
     },
     "win": {
-      "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "zip", "arch": ["x64"] }
-      ],
+      "icon": "build/icons/icon.ico",
+      "target": ["nsis", "zip"],
       "artifactName": "Linktran-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {

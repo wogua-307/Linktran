@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 const { createStorage } = require('./storage');
 
 const PORT = Number(process.env.PORT) || 9527;
@@ -12,6 +13,8 @@ const PUBLIC = process.env.PUBLIC_DIR || path.join(ROOT, 'public');
 const UPLOADS = process.env.UPLOADS_DIR || path.join(ROOT, 'uploads');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+const PLATFORMS = new Set(['macos', 'windows', 'linux', 'ios', 'android', 'unknown']);
+const CLIENT_TYPES = new Set(['desktop', 'mobile', 'web', 'extension']);
 const clients = new Map();
 const storage = createStorage(DATA);
 const savedState = storage.loadState();
@@ -28,6 +31,16 @@ const mimeTypes = {
   '.txt': 'text/plain; charset=utf-8', '.json': 'application/json; charset=utf-8'
 };
 
+function networkUrls() {
+  const urls = [];
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && !entry.internal) urls.push(`http://${entry.address}:${PORT}`);
+    }
+  }
+  return [...new Set(urls)];
+}
+
 function json(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
@@ -43,7 +56,7 @@ function safeFilename(value) {
 }
 
 function profileFor(id) {
-  return profiles.get(id) || { id, name: '匿名设备', avatar: '' };
+  return profiles.get(id) || { id, name: '匿名设备', avatar: '', platform: 'unknown', clientType: 'web' };
 }
 
 function canAccess(chat, clientId) {
@@ -116,6 +129,18 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { app: 'linktran', status: 'ok', port: PORT });
     }
 
+    if (req.method === 'GET' && url.pathname === '/api/network') {
+      return json(res, 200, { urls: networkUrls() });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/qrcode') {
+      const target = url.searchParams.get('url') || '';
+      if (!networkUrls().includes(target)) return json(res, 400, { error: '无效的局域网地址' });
+      const svg = await QRCode.toString(target, { type: 'svg', margin: 1, width: 280, color: { dark: '#20231f', light: '#ffffff' } });
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      return res.end(svg);
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/events') {
       const id = cleanText(url.searchParams.get('id'), 80) || crypto.randomUUID();
       res.writeHead(200, {
@@ -139,11 +164,13 @@ const server = http.createServer(async (req, res) => {
       const id = cleanText(body.id, 80);
       const name = cleanText(body.name, 30) || '匿名设备';
       const avatar = String(body.avatar || '');
+      const platform = PLATFORMS.has(body.platform) ? body.platform : 'unknown';
+      const clientType = CLIENT_TYPES.has(body.clientType) ? body.clientType : 'web';
       if (!id) return json(res, 400, { error: '设备 ID 不能为空' });
       if (avatar && (!/^data:image\/(?:png|jpeg|webp);base64,/.test(avatar) || avatar.length > 300 * 1024)) {
         return json(res, 400, { error: '头像格式不支持或文件过大' });
       }
-      const profile = { id, name, avatar };
+      const profile = { id, name, avatar, platform, clientType };
       storage.upsertProfile(profile);
       profiles.set(id, profile);
       broadcast('profile', profile);
@@ -237,12 +264,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  const addresses = [];
-  for (const entries of Object.values(os.networkInterfaces())) {
-    for (const entry of entries || []) if (entry.family === 'IPv4' && !entry.internal) addresses.push(`http://${entry.address}:${PORT}`);
-  }
   console.log(`\n局域网传输已启动\n本机访问: http://localhost:${PORT}`);
-  for (const address of addresses) console.log(`其他设备: ${address}`);
+  for (const address of networkUrls()) console.log(`其他设备: ${address}`);
   console.log(`数据文件: ${storage.filename}`);
   console.log('\n保持此终端运行，并让设备连接同一个 Wi-Fi。\n');
 });

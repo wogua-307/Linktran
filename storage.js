@@ -50,6 +50,10 @@ function createStorage(dataDir) {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_file_url ON messages(file_url) WHERE file_url IS NOT NULL;
   `);
 
+  const profileColumns = new Set(db.prepare('PRAGMA table_info(profiles)').all().map(column => column.name));
+  if (!profileColumns.has('platform')) db.exec("ALTER TABLE profiles ADD COLUMN platform TEXT NOT NULL DEFAULT 'unknown'");
+  if (!profileColumns.has('client_type')) db.exec("ALTER TABLE profiles ADD COLUMN client_type TEXT NOT NULL DEFAULT 'web'");
+
   db.prepare(`
     INSERT OR IGNORE INTO chats (id, type, name, created_at)
     VALUES ('lobby', 'lobby', '共享空间', ?)
@@ -57,8 +61,9 @@ function createStorage(dataDir) {
 
   const statements = {
     upsertProfile: db.prepare(`
-      INSERT INTO profiles (id, name, avatar, updated_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET name = excluded.name, avatar = excluded.avatar, updated_at = excluded.updated_at
+      INSERT INTO profiles (id, name, avatar, platform, client_type, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET name = excluded.name, avatar = excluded.avatar,
+        platform = excluded.platform, client_type = excluded.client_type, updated_at = excluded.updated_at
     `),
     insertChat: db.prepare('INSERT OR IGNORE INTO chats (id, type, name, created_at) VALUES (?, ?, ?, ?)'),
     insertMember: db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, profile_id) VALUES (?, ?)'),
@@ -68,7 +73,7 @@ function createStorage(dataDir) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     fileByUrl: db.prepare('SELECT file_name AS name FROM messages WHERE file_url = ? AND type = \'file\''),
-    profiles: db.prepare('SELECT id, name, avatar FROM profiles ORDER BY updated_at'),
+    profiles: db.prepare('SELECT id, name, avatar, platform, client_type AS clientType FROM profiles ORDER BY updated_at'),
     chats: db.prepare('SELECT id, type, name, created_at AS createdAt FROM chats ORDER BY created_at'),
     members: db.prepare('SELECT profile_id AS id FROM chat_members WHERE chat_id = ? ORDER BY rowid'),
     histories: db.prepare(`
@@ -81,7 +86,7 @@ function createStorage(dataDir) {
   };
 
   function upsertProfile(profile) {
-    statements.upsertProfile.run(profile.id, profile.name, profile.avatar, Date.now());
+    statements.upsertProfile.run(profile.id, profile.name, profile.avatar, profile.platform, profile.clientType, Date.now());
   }
 
   function saveChat(chat) {

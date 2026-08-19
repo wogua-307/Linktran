@@ -1,5 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const clientId = localStorage.lanClientId || (localStorage.lanClientId = createClientId());
+const deviceContext = detectDeviceContext();
 let deviceName = localStorage.lanDeviceName || `${deviceLabel()} ${Math.floor(Math.random() * 90 + 10)}`;
 let deviceAvatar = localStorage.lanDeviceAvatar || '';
 let pendingAvatar = deviceAvatar;
@@ -23,14 +24,21 @@ function createClientId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function deviceLabel() {
+function detectDeviceContext() {
   const ua = navigator.userAgent;
-  if (/iPhone/i.test(ua)) return 'iPhone';
-  if (/iPad/i.test(ua)) return 'iPad';
-  if (/Android/i.test(ua)) return 'Android';
-  if (/Mac/i.test(ua)) return 'Mac';
-  if (/Windows/i.test(ua)) return 'Windows';
-  return '设备';
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  let platform = 'unknown';
+  if (/iPhone|iPad|iPod/i.test(ua) || isIPadOS) platform = 'ios';
+  else if (/Android/i.test(ua)) platform = 'android';
+  else if (/Windows/i.test(ua)) platform = 'windows';
+  else if (/Mac/i.test(ua)) platform = 'macos';
+  else if (/Linux/i.test(ua)) platform = 'linux';
+  const desktop = new URLSearchParams(location.search).get('desktop') === '1';
+  return { platform, clientType: desktop ? 'desktop' : ['ios', 'android'].includes(platform) ? 'mobile' : 'web' };
+}
+
+function deviceLabel() {
+  return ({ macos: 'Mac', windows: 'Windows', linux: 'Linux', ios: 'iPhone', android: 'Android' })[deviceContext.platform] || '设备';
 }
 
 function initials(name) { return [...String(name || '?').trim()].slice(0, 2).join('').toUpperCase(); }
@@ -78,7 +86,32 @@ function closeModal(modal) {
   if (typeof modal.close === 'function') modal.close();
   else { modal.removeAttribute('open'); document.body.classList.remove('modal-open'); }
 }
-function profileFor(id) { return profiles.get(id) || { id, name: '匿名设备', avatar: '' }; }
+async function loadConnectAddresses() {
+  const response = await fetch('/api/network');
+  if (!response.ok) throw new Error('无法获取局域网地址');
+  const { urls } = await response.json();
+  if (!urls.length) throw new Error('未发现可用的局域网地址');
+  const select = $('#connectAddress');
+  select.innerHTML = urls.map(url => `<option value="${escapeHtml(url)}">${escapeHtml(url)}</option>`).join('');
+  updateConnectQr();
+}
+function updateConnectQr() {
+  const url = $('#connectAddress').value;
+  $('#connectLink').textContent = url;
+  $('#connectQr').src = `/api/qrcode?url=${encodeURIComponent(url)}`;
+}
+function profileFor(id) { return profiles.get(id) || { id, name: '匿名设备', avatar: '', platform: 'unknown', clientType: 'web' }; }
+function deviceIcon(profile) {
+  if (profile.clientType === 'desktop') return 'monitor';
+  if (profile.clientType === 'mobile') return 'smartphone';
+  if (profile.clientType === 'extension') return 'puzzle';
+  return 'globe';
+}
+function deviceKindLabel(profile) {
+  const platform = ({ macos: 'macOS', windows: 'Windows', linux: 'Linux', ios: 'iOS', android: 'Android', unknown: '未知系统' })[profile.platform] || '未知系统';
+  const clientType = ({ desktop: '客户端', mobile: '移动端', web: 'Web', extension: '浏览器插件' })[profile.clientType] || 'Web';
+  return `${platform} · ${clientType}`;
+}
 function avatarHtml(profile, extraClass = '') {
   const content = profile.avatar ? `<img src="${profile.avatar}" alt="">` : escapeHtml(initials(profile.name));
   return `<span class="avatar ${extraClass}">${content}</span>`;
@@ -110,7 +143,7 @@ function updateIdentity() {
 async function saveProfile() {
   const response = await fetch('/api/profile', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: clientId, name: deviceName, avatar: deviceAvatar })
+    body: JSON.stringify({ id: clientId, name: deviceName, avatar: deviceAvatar, ...deviceContext })
   });
   if (!response.ok) throw new Error((await response.json()).error);
   const profile = await response.json();
@@ -134,7 +167,7 @@ function connect() {
   });
   source.addEventListener('profile', event => {
     const profile = JSON.parse(event.data); profiles.set(profile.id, profile);
-    renderDevices(); renderChats(); updateChatHeader(); renderMessages();
+    renderDevices(); renderChats(); updateChatHeader(); updateRenderedProfile(profile);
   });
   source.addEventListener('chat', event => {
     const chat = JSON.parse(event.data); chats.set(chat.id, chat); renderChats();
@@ -184,8 +217,9 @@ function renderDevices() {
   $('#onlineCount').textContent = onlineDevices.length;
   $('#deviceList').innerHTML = onlineDevices.map(profile => `
     <button class="device-row" data-device-id="${escapeHtml(profile.id)}"${profile.id === clientId ? ' disabled' : ''}>
-      ${avatarHtml(profile)}<span><strong>${escapeHtml(profile.name)}${profile.id === clientId ? '（本机）' : ''}</strong><small>${profile.id === clientId ? '当前设备' : '点击发起单聊'}</small></span>
+      ${avatarHtml(profile)}<span><strong>${escapeHtml(profile.name)}${profile.id === clientId ? '（本机）' : ''}</strong><small class="device-kind"><i data-lucide="${deviceIcon(profile)}" aria-hidden="true"></i><span>${escapeHtml(deviceKindLabel(profile))} · ${profile.id === clientId ? '当前设备' : '点击发起单聊'}</span></small></span>
     </button>`).join('');
+  globalThis.lucide?.createIcons({ attrs: { 'stroke-width': 1.8 } });
 }
 
 function updateChatHeader() {
@@ -215,6 +249,15 @@ function renderMessages() {
   chat.history.forEach(renderEvent);
 }
 
+function updateRenderedProfile(profile) {
+  document.querySelectorAll(`.event[data-sender-id="${CSS.escape(profile.id)}"]`).forEach(article => {
+    const avatar = article.querySelector('.event-avatar');
+    if (avatar) avatar.outerHTML = avatarHtml(profile, 'event-avatar');
+    const senderName = article.querySelector('.event-meta strong');
+    if (senderName && profile.id !== clientId) senderName.textContent = profile.name;
+  });
+}
+
 function renderEvent(item) {
   if (seen.has(item.id)) return;
   seen.add(item.id); $('#messages .empty')?.remove();
@@ -223,9 +266,10 @@ function renderEvent(item) {
   const extension = item.type === 'file' ? (item.file.name.split('.').pop() || 'FILE').slice(0, 4) : '';
   const content = item.type === 'file'
     ? `<a class="file-card" href="${item.file.url}"><span class="file-icon">${escapeHtml(extension)}</span><span class="file-details"><strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small></span><span class="download">↓</span></a>`
-    : `<div class="bubble"><div class="markdown-body">${LinktranMarkdown.render(item.text)}</div><div class="message-actions"><button class="copy-message" type="button" title="复制消息" aria-label="复制消息">⧉</button></div></div>`;
+    : `<div class="message-shell"><div class="bubble markdown-body">${LinktranMarkdown.render(item.text)}</div><button class="copy-message" type="button" title="复制消息" aria-label="复制消息">⧉</button></div>`;
   const article = document.createElement('article');
   article.className = `event${mine ? ' mine' : ''}`;
+  article.dataset.senderId = item.senderId;
   article.innerHTML = `${avatarHtml(sender, 'event-avatar')}<div class="event-body"><div class="event-meta"><strong>${escapeHtml(mine ? '我' : sender.name)}</strong><time>${formatTime(item.time)}</time></div>${content}</div>`;
   article.querySelector('.copy-message')?.addEventListener('click', async () => {
     try { await copyText(item.text); showToast('消息已复制'); }
@@ -339,6 +383,16 @@ $('#editProfile').addEventListener('click', () => {
   $('#notificationSetting').checked = notificationsEnabled;
   $('#avatarPreview').innerHTML = pendingAvatar ? `<img src="${pendingAvatar}" alt="">` : escapeHtml(initials(deviceName));
   $('#avatarInput').value = ''; openModal($('#profileDialog'));
+});
+$('#openConnect').addEventListener('click', async () => {
+  openModal($('#connectDialog'));
+  try { await loadConnectAddresses(); }
+  catch (error) { closeModal($('#connectDialog')); showToast(error.message); }
+});
+$('#connectAddress').addEventListener('change', updateConnectQr);
+$('#copyConnectLink').addEventListener('click', async () => {
+  try { await copyText($('#connectAddress').value); showToast('连接地址已复制'); }
+  catch (error) { showToast(error.message); }
 });
 $('#avatarInput').addEventListener('change', async event => {
   try { pendingAvatar = await resizeAvatar(event.target.files[0]); $('#avatarPreview').innerHTML = `<img src="${pendingAvatar}" alt="">`; }
