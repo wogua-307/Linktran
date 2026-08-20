@@ -2,6 +2,8 @@
 
 中文文档：[README.md](README.md)
 
+Release history: [CHANGELOG.md](CHANGELOG.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Commercial use](https://img.shields.io/badge/Commercial%20use-Allowed-brightgreen.svg)](LICENSE)
 [![Platforms](https://img.shields.io/badge/Platforms-Web%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](#running-modes)

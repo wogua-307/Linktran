@@ -10,6 +10,8 @@ let themePreference = localStorage.linktranTheme || 'system';
 let autoUpdateEnabled = localStorage.linktranAutoUpdate !== 'false';
 let updateResult = null;
 let updateChecking = false;
+let relayInfo = null;
+let relayClientId = null;
 let source;
 let activeChatId = 'lobby';
 let activeChatTab = 'group';
@@ -55,6 +57,30 @@ async function checkForDesktopUpdate({ silent = false } = {}) {
     renderUpdateStatus();
     if (!silent) showToast(t('检查更新失败'));
   } finally { updateChecking = false; renderUpdateStatus(); }
+}
+
+function renderRelayInfo() {
+  if (!relayInfo) return;
+  $('#relayName').textContent = t('中转节点：{name}', { name: relayInfo.name });
+  $('#relayDetail').textContent = t(relayInfo.type === 'desktop' ? '桌面客户端 · 应用数据' : 'Web 服务 · 项目数据');
+}
+
+async function loadRelayInfo() {
+  const response = await fetch('/api/host');
+  if (!response.ok) throw new Error('Unable to identify relay');
+  relayInfo = await response.json();
+  relayClientId = relayInfo.relayClientId || null;
+  if (globalThis.linktranDesktop) {
+    const localInstanceId = await globalThis.linktranDesktop.getHostInstanceId();
+    const claimResponse = await fetch('/api/host/claim', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanceId: localInstanceId, clientId })
+    });
+    if (claimResponse.ok) {
+      relayInfo = await claimResponse.json(); relayClientId = relayInfo.relayClientId;
+    }
+  }
+  renderRelayInfo(); renderDevices();
 }
 
 function createClientId() {
@@ -199,6 +225,7 @@ function connect() {
   source = new EventSource(`/api/events?id=${encodeURIComponent(clientId)}`);
   source.addEventListener('bootstrap', event => {
     const data = JSON.parse(event.data);
+    if (data.host) { relayInfo = data.host; relayClientId = data.host.relayClientId || null; renderRelayInfo(); }
     Object.values(data.profiles).forEach(profile => profiles.set(profile.id, profile));
     data.chats.forEach(chat => chats.set(chat.id, chat));
     renderChats(); selectChat(chats.has(activeChatId) ? activeChatId : 'lobby');
@@ -211,6 +238,10 @@ function connect() {
   source.addEventListener('profile', event => {
     const profile = JSON.parse(event.data); profiles.set(profile.id, profile);
     renderDevices(); renderChats(); updateChatHeader(); updateRenderedProfile(profile);
+  });
+  source.addEventListener('host', event => {
+    relayInfo = JSON.parse(event.data); relayClientId = relayInfo.relayClientId || null;
+    renderRelayInfo(); renderDevices();
   });
   source.addEventListener('chat', event => {
     const chat = JSON.parse(event.data); chats.set(chat.id, chat); renderChats();
@@ -260,7 +291,7 @@ function renderDevices() {
   $('#onlineCount').textContent = onlineDevices.length;
   $('#deviceList').innerHTML = onlineDevices.map(profile => `
     <button class="device-row" data-device-id="${escapeHtml(profile.id)}"${profile.id === clientId ? ' disabled' : ''}>
-      ${avatarHtml(profile)}<span><strong>${escapeHtml(profile.name)}${profile.id === clientId ? t('（本机）') : ''}</strong><small class="device-kind"><i data-lucide="${deviceIcon(profile)}" aria-hidden="true"></i><span>${escapeHtml(deviceKindLabel(profile))} · ${profile.id === clientId ? t('当前设备') : t('点击发起单聊')}</span></small></span>
+      ${avatarHtml(profile)}<span><strong>${escapeHtml(profile.name)}${profile.id === clientId ? t('（本机）') : ''}${profile.id === relayClientId ? `<b class="relay-badge">${t('中转节点')}</b>` : ''}</strong><small class="device-kind"><i data-lucide="${deviceIcon(profile)}" aria-hidden="true"></i><span>${escapeHtml(deviceKindLabel(profile))} · ${profile.id === relayClientId ? t('本机中转') : profile.id === clientId ? t('当前设备') : t('点击发起单聊')}</span></small></span>
     </button>`).join('');
   globalThis.lucide?.createIcons({ attrs: { 'stroke-width': 1.8 } });
 }
@@ -509,7 +540,7 @@ document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth
 document.addEventListener('dragover', event => event.preventDefault());
 document.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('.chat').classList.remove('dragging'); uploadFiles([...event.dataTransfer.files]); });
 globalThis.addEventListener('linktran:localechange', () => {
-  renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle(); renderUpdateStatus();
+  renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle(); renderUpdateStatus(); renderRelayInfo();
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePreference === 'system') applyTheme(); });
 
@@ -517,6 +548,7 @@ async function init() {
   globalThis.LinktranI18n.apply();
   globalThis.lucide?.createIcons({ attrs: { 'stroke-width': 1.8 } });
   updateIdentity();
+  loadRelayInfo().catch(() => {});
   if (globalThis.linktranDesktop) {
     try {
       const currentVersion = await globalThis.linktranDesktop.getVersion();

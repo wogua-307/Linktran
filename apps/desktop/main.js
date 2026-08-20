@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } = require('electron');
 const { spawn } = require('node:child_process');
+const crypto = require('node:crypto');
 const path = require('node:path');
 const http = require('node:http');
 const semver = require('semver');
@@ -9,6 +10,7 @@ app.setName('邻传');
 const PORT = 9527;
 const RELEASE_API = 'https://api.github.com/repos/wogua-307/Linktran/releases/latest';
 const RELEASE_URL_PREFIX = 'https://github.com/wogua-307/Linktran/releases/';
+const hostInstanceId = crypto.randomUUID();
 let hostProcess;
 let mainWindow;
 let tray;
@@ -33,6 +35,7 @@ async function checkForUpdate() {
 
 ipcMain.handle('linktran:check-update', checkForUpdate);
 ipcMain.handle('linktran:get-version', () => app.getVersion());
+ipcMain.handle('linktran:get-host-instance-id', () => hostInstanceId);
 ipcMain.handle('linktran:open-release', (_event, url) => {
   if (typeof url !== 'string' || !url.startsWith(RELEASE_URL_PREFIX)) throw new Error('Invalid release URL');
   return shell.openExternal(url);
@@ -93,7 +96,9 @@ function startLanHost() {
       PORT: String(PORT),
       PUBLIC_DIR: path.join(root, 'public'),
       DATA_DIR: path.join(app.getPath('userData'), 'data'),
-      UPLOADS_DIR: path.join(app.getPath('userData'), 'uploads')
+      UPLOADS_DIR: path.join(app.getPath('userData'), 'uploads'),
+      LINKTRAN_HOST_TYPE: 'desktop',
+      LINKTRAN_HOST_INSTANCE_ID: hostInstanceId
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });

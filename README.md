@@ -2,6 +2,8 @@
 
 English documentation: [README.en.md](README.en.md)
 
+版本更新记录：[CHANGELOG.md](CHANGELOG.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Commercial use](https://img.shields.io/badge/Commercial%20use-Allowed-brightgreen.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933.svg)](package.json)

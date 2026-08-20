@@ -18,6 +18,8 @@
     '立即检查': 'Check now', '正在检查更新…': 'Checking for updates…', '尚未检查更新': 'Not checked yet',
     '当前版本 {version} 已是最新版本': 'Version {version} is up to date', '发现新版本 v{version}': 'Version v{version} is available',
     '前往下载': 'Download', '检查更新失败': 'Unable to check for updates',
+    '正在识别中转节点…': 'Identifying relay…', '中转节点：{name}': 'Relay: {name}', '本机中转': 'This device is the relay',
+    '中转节点': 'Relay', '桌面客户端 · 应用数据': 'Desktop client · App data', 'Web 服务 · 项目数据': 'Web service · Project data',
     '新消息提醒': 'New message notifications',
     '在其他会话收到消息时显示提醒': 'Show alerts for messages received in other chats', '保存资料': 'Save profile',
     '手机与电脑需连接同一个 Wi-Fi': 'Your phone and computer must use the same Wi-Fi',

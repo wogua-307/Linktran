@@ -12,10 +12,13 @@ const ROOT = __dirname;
 const PUBLIC = process.env.PUBLIC_DIR || path.join(ROOT, 'public');
 const UPLOADS = process.env.UPLOADS_DIR || path.join(ROOT, 'uploads');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
+const HOST_TYPE = process.env.LINKTRAN_HOST_TYPE === 'desktop' ? 'desktop' : 'web';
+const HOST_INSTANCE_ID = process.env.LINKTRAN_HOST_INSTANCE_ID || crypto.randomUUID();
 const MAX_FILE_SIZE = 1024 * 1024 * 1024;
 const PLATFORMS = new Set(['macos', 'windows', 'linux', 'ios', 'android', 'unknown']);
 const CLIENT_TYPES = new Set(['desktop', 'mobile', 'web', 'extension']);
 const clients = new Map();
+let relayClientId = null;
 const storage = createStorage(DATA);
 const savedState = storage.loadState();
 const profiles = new Map(savedState.profiles.map(profile => [profile.id, profile]));
@@ -87,6 +90,10 @@ function broadcastPresence() {
   broadcast('presence', online);
 }
 
+function publicHost() {
+  return { name: os.hostname(), type: HOST_TYPE, storage: process.env.DATA_DIR ? 'app' : 'project', relayClientId };
+}
+
 function addEvent(chat, event) {
   const sender = profileFor(event.senderId);
   const item = storage.saveEvent({ id: crypto.randomUUID(), chatId: chat.id, time: Date.now(), name: sender.name, ...event });
@@ -129,6 +136,21 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { app: 'linktran', status: 'ok', port: PORT });
     }
 
+    if (req.method === 'GET' && url.pathname === '/api/host') {
+      return json(res, 200, publicHost());
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/host/claim') {
+      const body = await readJson(req);
+      if (cleanText(body.instanceId, 80) !== HOST_INSTANCE_ID) return json(res, 403, { error: '无权登记中转设备' });
+      const id = cleanText(body.clientId, 80);
+      if (!id) return json(res, 400, { error: '设备 ID 不能为空' });
+      relayClientId = id;
+      const host = publicHost();
+      broadcast('host', host);
+      return json(res, 200, host);
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/network') {
       return json(res, 200, { urls: networkUrls() });
     }
@@ -150,7 +172,7 @@ const server = http.createServer(async (req, res) => {
       });
       clients.set(id, { id, res });
       const accessibleChats = [...chats.values()].map(chat => publicChat(chat, id, true)).filter(Boolean);
-      send(clients.get(id), 'bootstrap', { chats: accessibleChats, profiles: Object.fromEntries(profiles) });
+      send(clients.get(id), 'bootstrap', { chats: accessibleChats, profiles: Object.fromEntries(profiles), host: publicHost() });
       broadcastPresence();
       req.on('close', () => {
         if (clients.get(id)?.res === res) clients.delete(id);

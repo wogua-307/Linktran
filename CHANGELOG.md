@@ -1,0 +1,45 @@
+# 版本记录
+
+本文件记录邻传各正式版本的重要功能、修复和兼容性变化。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+
+## [未发布]
+
+### 新增
+
+- 显示当前中转节点的主机名、服务类型和数据存储类型。
+- 桌面客户端作为中转时，在所有在线设备的列表中显示“中转节点”徽标。
+
+### 修复
+
+- 修复只有中转设备本机能识别中转标记、其他设备看不到的问题。
+
+## [1.0.1] - 2026-08-20
+
+### 新增
+
+- 桌面客户端每 24 小时自动检查一次 GitHub Release。
+- 全局设置增加自动检查开关和“立即检查”操作。
+- 发现新版本后显示版本号，并可打开对应 Release 下载页面。
+
+### 修复
+
+- 更新检查结果可跨重启恢复，并在客户端升级后自动失效。
+- GitHub 暂时不可用时保留上一次有效检查结果。
+- 未执行过检查时不再错误显示“已是最新版本”。
+
+## [1.0.0] - 2026-08-20
+
+### 新增
+
+- 支持共享空间、设备单聊和多人群聊。
+- 支持局域网实时消息、文件传输和手机扫码连接。
+- 使用 SQLite 持久化设备资料、会话、消息和文件记录。
+- 支持自定义设备昵称、头像和群成员组合头像。
+- 支持 Markdown、富文本粘贴、Emoji 和消息快捷复制。
+- 支持中文、English 以及跟随系统、浅色、深色主题。
+- 支持 macOS Intel、macOS Apple Silicon 和 Windows x64 客户端。
+- macOS 和 Windows 客户端支持系统托盘。
+
+[未发布]: https://github.com/wogua-307/Linktran/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/wogua-307/Linktran/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/wogua-307/Linktran/releases/tag/v1.0.0
