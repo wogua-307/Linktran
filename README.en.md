@@ -27,6 +27,7 @@ Linktran is a local-network messaging and file-transfer tool for offices, homes,
 - SQLite persistence for profiles, chats, messages, and files
 - LAN QR code for quick mobile connection
 - macOS and Windows tray support in the desktop client
+- Daily GitHub Release checks in the desktop client, with manual check and opt-out controls
 
 ## Screenshots
 

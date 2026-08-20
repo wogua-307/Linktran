@@ -26,7 +26,7 @@
     "build:win": "npm run build:win --workspace @linktran/desktop",
     "verify:win": "npm run verify:win --workspace @linktran/desktop",
     "build:extension": "npm run build --workspace @linktran/extension",
-    "check": "node --check server.js && node --check storage.js && node --check public/markdown.js && node --check public/rich-paste.js && node --check apps/web/scripts/sync-vendor.mjs && node --check apps/desktop/main.js && node --check apps/desktop/scripts/build-icons.mjs && node --check apps/desktop/scripts/build-desktop.mjs && node --check apps/desktop/scripts/verify-windows-build.mjs && node --check apps/extension/src/background.js && node --check apps/extension/src/db.js"
+    "check": "node --check server.js && node --check storage.js && node --check public/app.js && node --check public/i18n.js && node --check public/markdown.js && node --check public/rich-paste.js && node --check apps/web/scripts/sync-vendor.mjs && node --check apps/desktop/main.js && node --check apps/desktop/preload.js && node --check apps/desktop/scripts/build-icons.mjs && node --check apps/desktop/scripts/build-desktop.mjs && node --check apps/desktop/scripts/verify-windows-build.mjs && node --check apps/extension/src/background.js && node --check apps/extension/src/db.js"
   },
   "devDependencies": {
     "electron": "42.2.0",
@@ -42,6 +42,7 @@
     "lucide": "^1.32.0",
     "marked": "^18.0.9",
     "qrcode": "^1.5.4",
+    "semver": "^7.8.5",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2"
   }

@@ -7,6 +7,9 @@ let deviceAvatar = localStorage.lanDeviceAvatar || '';
 let pendingAvatar = deviceAvatar;
 let notificationsEnabled = localStorage.lanNotifications !== 'false';
 let themePreference = localStorage.linktranTheme || 'system';
+let autoUpdateEnabled = localStorage.linktranAutoUpdate !== 'false';
+let updateResult = null;
+let updateChecking = false;
 let source;
 let activeChatId = 'lobby';
 let activeChatTab = 'group';
@@ -23,6 +26,36 @@ function applyTheme() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#1d211e' : '#f5f5f2');
 }
 applyTheme();
+
+function renderUpdateStatus() {
+  if (!globalThis.linktranDesktop) return;
+  const button = $('#checkUpdate');
+  if (updateChecking) {
+    $('#updateStatus').textContent = t('正在检查更新…'); button.textContent = t('立即检查'); button.disabled = true;
+  } else if (updateResult?.hasUpdate) {
+    $('#updateStatus').textContent = t('发现新版本 v{version}', { version: updateResult.latestVersion }); button.textContent = t('前往下载'); button.disabled = false;
+  } else if (updateResult) {
+    $('#updateStatus').textContent = t('当前版本 {version} 已是最新版本', { version: updateResult.currentVersion }); button.textContent = t('立即检查'); button.disabled = false;
+  } else {
+    $('#updateStatus').textContent = t('尚未检查更新'); button.textContent = t('立即检查'); button.disabled = false;
+  }
+}
+
+async function checkForDesktopUpdate({ silent = false } = {}) {
+  if (!globalThis.linktranDesktop || updateChecking) return;
+  updateChecking = true; renderUpdateStatus();
+  try {
+    updateResult = await globalThis.linktranDesktop.checkForUpdate();
+    localStorage.linktranLastUpdateCheck = String(Date.now());
+    localStorage.linktranLastUpdateResult = JSON.stringify(updateResult);
+    renderUpdateStatus();
+    if (updateResult.hasUpdate) showToast(t('发现新版本 v{version}', { version: updateResult.latestVersion }));
+    else if (!silent) showToast(t('当前版本 {version} 已是最新版本', { version: updateResult.currentVersion }));
+  } catch {
+    renderUpdateStatus();
+    if (!silent) showToast(t('检查更新失败'));
+  } finally { updateChecking = false; renderUpdateStatus(); }
+}
 
 function createClientId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -397,6 +430,10 @@ $('#openSettings').addEventListener('click', () => {
   $('#languageSetting').value = globalThis.LinktranI18n.getLocale();
   $('#themeSetting').value = themePreference;
   $('#notificationSetting').checked = notificationsEnabled;
+  if (globalThis.linktranDesktop) {
+    $('#desktopUpdateSettings').classList.remove('hidden');
+    $('#autoUpdateSetting').checked = autoUpdateEnabled; renderUpdateStatus();
+  }
   openModal($('#settingsDialog'));
 });
 $('#openConnect').addEventListener('click', async () => {
@@ -428,11 +465,17 @@ $('#settingsForm').addEventListener('submit', async event => {
   const wasNotificationsEnabled = notificationsEnabled;
   notificationsEnabled = $('#notificationSetting').checked;
   themePreference = $('#themeSetting').value;
+  if (globalThis.linktranDesktop) autoUpdateEnabled = $('#autoUpdateSetting').checked;
   if (notificationsEnabled && !wasNotificationsEnabled) await requestNotificationPermission();
   localStorage.lanNotifications = String(notificationsEnabled);
   localStorage.linktranTheme = themePreference; applyTheme();
+  localStorage.linktranAutoUpdate = String(autoUpdateEnabled);
   globalThis.LinktranI18n.setLocale($('#languageSetting').value);
   closeModal($('#settingsDialog')); showToast(t('设置已保存'));
+});
+$('#checkUpdate').addEventListener('click', async () => {
+  if (updateResult?.hasUpdate) return globalThis.linktranDesktop.openRelease(updateResult.releaseUrl);
+  await checkForDesktopUpdate();
 });
 
 $('#messageForm').addEventListener('submit', async event => {
@@ -466,7 +509,7 @@ document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth
 document.addEventListener('dragover', event => event.preventDefault());
 document.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('.chat').classList.remove('dragging'); uploadFiles([...event.dataTransfer.files]); });
 globalThis.addEventListener('linktran:localechange', () => {
-  renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle();
+  renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle(); renderUpdateStatus();
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePreference === 'system') applyTheme(); });
 
@@ -474,6 +517,28 @@ async function init() {
   globalThis.LinktranI18n.apply();
   globalThis.lucide?.createIcons({ attrs: { 'stroke-width': 1.8 } });
   updateIdentity();
+  if (globalThis.linktranDesktop) {
+    try {
+      const currentVersion = await globalThis.linktranDesktop.getVersion();
+      const cachedResult = JSON.parse(localStorage.linktranLastUpdateResult || 'null');
+      const validCache = cachedResult?.currentVersion === currentVersion
+        && typeof cachedResult.latestVersion === 'string'
+        && typeof cachedResult.hasUpdate === 'boolean'
+        && typeof cachedResult.releaseUrl === 'string';
+      if (validCache) updateResult = cachedResult;
+      else {
+        localStorage.removeItem('linktranLastUpdateResult');
+        localStorage.removeItem('linktranLastUpdateCheck');
+      }
+    } catch {
+      localStorage.removeItem('linktranLastUpdateResult');
+      localStorage.removeItem('linktranLastUpdateCheck');
+    }
+  }
+  if (globalThis.linktranDesktop && autoUpdateEnabled) {
+    const lastCheck = Number(localStorage.linktranLastUpdateCheck || 0);
+    if (Date.now() - lastCheck >= 24 * 60 * 60 * 1000) setTimeout(() => checkForDesktopUpdate({ silent: true }), 5000);
+  }
   try { await saveProfile(); connect(); } catch (error) { showToast(error.message); setTimeout(init, 1500); }
 }
 init();

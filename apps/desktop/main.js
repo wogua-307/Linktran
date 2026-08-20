@@ -1,14 +1,42 @@
-const { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const http = require('node:http');
+const semver = require('semver');
 
 app.setName('邻传');
 
 const PORT = 9527;
+const RELEASE_API = 'https://api.github.com/repos/wogua-307/Linktran/releases/latest';
+const RELEASE_URL_PREFIX = 'https://github.com/wogua-307/Linktran/releases/';
 let hostProcess;
 let mainWindow;
 let tray;
+
+async function checkForUpdate() {
+  const response = await fetch(RELEASE_API, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Linktran/${app.getVersion()}` },
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+  const release = await response.json();
+  const currentVersion = semver.clean(app.getVersion());
+  const latestVersion = semver.clean(release.tag_name);
+  if (!currentVersion || !latestVersion) throw new Error('Invalid release version');
+  return {
+    currentVersion,
+    latestVersion,
+    hasUpdate: semver.gt(latestVersion, currentVersion),
+    releaseUrl: release.html_url
+  };
+}
+
+ipcMain.handle('linktran:check-update', checkForUpdate);
+ipcMain.handle('linktran:get-version', () => app.getVersion());
+ipcMain.handle('linktran:open-release', (_event, url) => {
+  if (typeof url !== 'string' || !url.startsWith(RELEASE_URL_PREFIX)) throw new Error('Invalid release URL');
+  return shell.openExternal(url);
+});
 
 function hostRoot() {
   return app.isPackaged ? path.join(process.resourcesPath, 'lan-host') : path.resolve(__dirname, '../..');

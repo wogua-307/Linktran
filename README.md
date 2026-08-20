@@ -59,6 +59,7 @@ English documentation: [README.en.md](README.en.md)
 - 响应式布局，可通过手机和平板浏览器使用
 - Web/桌面端展示局域网连接二维码，手机扫码即可加入
 - macOS/Windows 桌面客户端支持系统托盘，关闭窗口后服务继续运行
+- 桌面客户端每天自动检查一次 GitHub Release，也可在全局设置中手动检查和关闭
 
 #### 设备资料与提醒设置
 

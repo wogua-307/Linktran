@@ -78,6 +78,13 @@
         <span><strong>新消息提醒</strong><small>在其他会话收到消息时显示提醒</small></span>
         <input id="notificationSetting" type="checkbox"><i></i>
       </label>
+      <section class="desktop-update hidden" id="desktopUpdateSettings">
+        <label class="setting-row">
+          <span><strong>自动检查更新</strong><small>每天最多检查一次 GitHub Release</small></span>
+          <input id="autoUpdateSetting" type="checkbox"><i></i>
+        </label>
+        <div class="update-action"><span id="updateStatus">尚未检查更新</span><button id="checkUpdate" type="button" class="secondary">立即检查</button></div>
+      </section>
       <footer><button value="cancel" class="secondary">取消</button><button value="default" class="primary">保存设置</button></footer>
     </form>
   </dialog>
