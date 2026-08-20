@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [1.0.2] - 2026-08-20
+
 ### 新增
 
 - 显示当前中转节点的主机名、服务类型和数据存储类型。
@@ -40,6 +42,7 @@
 - 支持 macOS Intel、macOS Apple Silicon 和 Windows x64 客户端。
 - macOS 和 Windows 客户端支持系统托盘。
 
-[未发布]: https://github.com/wogua-307/Linktran/compare/v1.0.1...HEAD
+[未发布]: https://github.com/wogua-307/Linktran/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/wogua-307/Linktran/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/wogua-307/Linktran/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/wogua-307/Linktran/releases/tag/v1.0.0

@@ -1,6 +1,6 @@
 {
   "name": "@linktran/lan-host",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": { "dev": "node ../../server.js" }
 }
