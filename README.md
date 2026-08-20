@@ -399,6 +399,12 @@ npm run build:extension
 
 涉及桌面端时，再按目标平台运行对应构建。不要提交 `data/`、`uploads/`、`dist/`、`node_modules/` 或扩展构建目录。
 
+## 作者
+
+- 作者：窝瓜
+- 邮箱：[1587337963@qq.com](mailto:1587337963@qq.com)
+- GitHub：[wogua-307](https://github.com/wogua-307)
+
 ## 开源许可与商用
 
 邻传自身代码采用 [MIT License](LICENSE) 开源，允许：

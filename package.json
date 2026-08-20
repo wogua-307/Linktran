@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
+  "author": {
+    "name": "窝瓜",
+    "email": "1587337963@qq.com"
+  },
   "description": "同一 Wi-Fi 下的消息与文件传输工具",
   "workspaces": [
     "apps/*",
