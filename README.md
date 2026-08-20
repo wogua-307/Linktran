@@ -1,5 +1,7 @@
 # 邻传 Linktran
 
+English documentation: [README.en.md](README.en.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Commercial use](https://img.shields.io/badge/Commercial%20use-Allowed-brightgreen.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933.svg)](package.json)
@@ -45,6 +47,8 @@
 - 自动识别桌面客户端、电脑 Web、移动端及 macOS、Windows、Linux、iOS、Android
 - 文件选择、批量发送和拖拽上传，单文件上限 1 GB
 - 自定义设备昵称和头像
+- 中文/English 界面切换，首次访问默认跟随浏览器语言
+- 跟随系统、浅色和深色三种外观主题
 - 群成员头像组合展示
 - 会话未读计数、页面标题提醒和系统通知
 - Emoji 输入
@@ -55,6 +59,10 @@
 - 响应式布局，可通过手机和平板浏览器使用
 - Web/桌面端展示局域网连接二维码，手机扫码即可加入
 - macOS/Windows 桌面客户端支持系统托盘，关闭窗口后服务继续运行
+
+#### 设备资料与提醒设置
+
+点击左侧当前设备卡片可上传 PNG、JPG 或 WebP 头像并修改设备昵称，其他在线设备会实时看到更新后的资料。点击左侧底部的齿轮按钮可打开“全局设置”，切换中文/English 界面、选择跟随系统/浅色/深色主题，并独立开启或关闭新消息提醒。软件偏好保存在当前设备，保存后立即生效。
 
 ### 浏览器扩展
 
