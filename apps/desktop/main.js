@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, shell, Tray } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, shell, Tray } = require('electron');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const path = require('node:path');
@@ -6,6 +6,7 @@ const http = require('node:http');
 const semver = require('semver');
 
 app.setName('邻传');
+if (process.platform === 'win32') app.setAppUserModelId('com.linktran.desktop');
 
 const PORT = 9527;
 const RELEASE_API = 'https://api.github.com/repos/wogua-307/Linktran/releases/latest';
@@ -14,6 +15,34 @@ const hostInstanceId = crypto.randomUUID();
 let hostProcess;
 let mainWindow;
 let tray;
+
+function unreadOverlay(count) {
+  if (!count) return null;
+  const label = count > 99 ? '99+' : String(count);
+  const fontSize = label.length > 2 ? 13 : 17;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#e5484d"/><text x="16" y="21" fill="white" font-family="Arial,sans-serif" font-size="${fontSize}" font-weight="700" text-anchor="middle">${label}</text></svg>`;
+  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+}
+
+function setUnreadCount(value) {
+  const count = Math.max(0, Math.min(9999, Number(value) || 0));
+  if (process.platform === 'win32') mainWindow?.setOverlayIcon(unreadOverlay(count), count ? `${count} 条未读消息` : '');
+  else app.setBadgeCount(count);
+}
+
+function showMessageNotification(payload) {
+  if (!Notification.isSupported() || !mainWindow || mainWindow.isDestroyed()) return false;
+  const title = String(payload?.title || '邻传').slice(0, 100);
+  const body = String(payload?.body || '').slice(0, 500);
+  const chatId = String(payload?.chatId || '').slice(0, 140);
+  const notification = new Notification({ title, body, icon: trayIconPath() });
+  notification.on('click', () => {
+    showWindow();
+    if (chatId) mainWindow.webContents.send('linktran:notification-click', chatId);
+  });
+  notification.show();
+  return true;
+}
 
 async function checkForUpdate() {
   const response = await fetch(RELEASE_API, {
@@ -36,6 +65,8 @@ async function checkForUpdate() {
 ipcMain.handle('linktran:check-update', checkForUpdate);
 ipcMain.handle('linktran:get-version', () => app.getVersion());
 ipcMain.handle('linktran:get-host-instance-id', () => hostInstanceId);
+ipcMain.handle('linktran:set-unread-count', (_event, count) => setUnreadCount(count));
+ipcMain.handle('linktran:notify', (_event, payload) => showMessageNotification(payload));
 ipcMain.handle('linktran:open-release', (_event, url) => {
   if (typeof url !== 'string' || !url.startsWith(RELEASE_URL_PREFIX)) throw new Error('Invalid release URL');
   return shell.openExternal(url);
@@ -163,4 +194,4 @@ async function createWindow() {
 app.whenReady().then(createWindow).catch(error => dialog.showErrorBox('启动失败', error.message));
 app.on('activate', () => { if (mainWindow && !mainWindow.isDestroyed()) showWindow(); else createWindow(); });
 app.on('window-all-closed', () => {});
-app.on('before-quit', () => { app.isQuitting = true; hostProcess?.kill('SIGTERM'); });
+app.on('before-quit', () => { app.isQuitting = true; setUnreadCount(0); hostProcess?.kill('SIGTERM'); });

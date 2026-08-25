@@ -136,8 +136,10 @@ async function copyText(text) {
 function totalUnread() { return [...unreadCounts.values()].reduce((total, count) => total + count, 0); }
 function updateDocumentTitle() {
   const unread = totalUnread(); document.title = unread ? `(${unread}) ${t('邻传')}` : t('邻传');
+  globalThis.linktranDesktop?.setUnreadCount(unread).catch(() => {});
 }
 async function requestNotificationPermission() {
+  if (globalThis.linktranDesktop) return;
   if (!('Notification' in globalThis) || Notification.permission !== 'default') return;
   try { await Notification.requestPermission(); } catch { /* Page alerts remain available on restricted HTTP origins. */ }
 }
@@ -147,6 +149,14 @@ function notifyNewMessage(item) {
   const mentioned = item.mentions?.some(mention => mention.id === clientId);
   const content = item.type === 'file' ? t('发送了文件：{name}', { name: item.file.name }) : item.text;
   showToast(`${sender.name}：${content.slice(0, 50)}`);
+  if (globalThis.linktranDesktop) {
+    globalThis.linktranDesktop.notify({
+      title: `${mentioned ? t('有人@你') + ' · ' : ''}${t('邻传')} · ${sender.name}`,
+      body: content.slice(0, 120),
+      chatId: item.chatId
+    }).catch(() => {});
+    return;
+  }
   if ('Notification' in globalThis && Notification.permission === 'granted') {
     const notification = new Notification(`${mentioned ? t('有人@你') + ' · ' : ''}${t('邻传')} · ${sender.name}`, { body: content.slice(0, 120), icon: '/logo.svg', tag: item.chatId });
     notification.onclick = () => { globalThis.focus(); selectChat(item.chatId); notification.close(); };
@@ -702,6 +712,7 @@ globalThis.addEventListener('linktran:localechange', () => {
   renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle(); renderUpdateStatus(); renderRelayInfo();
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePreference === 'system') applyTheme(); });
+globalThis.linktranDesktop?.onNotificationClick(chatId => selectChat(chatId));
 
 async function init() {
   globalThis.LinktranI18n.apply();

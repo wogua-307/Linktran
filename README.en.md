@@ -22,6 +22,7 @@ Linktran is a local-network messaging and file-transfer tool for offices, homes,
 - System, light, and dark appearance themes
 - Group avatars composed from member avatars
 - Unread counts, page-title reminders, and system notifications
+- Native desktop notifications with Dock/taskbar unread badges
 - Emoji input and Markdown rendering with GFM tables, task lists, and code blocks
 - Structured `@` mentions for online devices in group chats and the shared space
 - Paste clipboard images or files into the composer, preview them, and send together
