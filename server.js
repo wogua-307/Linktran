@@ -53,6 +53,15 @@ function cleanText(value, max = 500) {
   return String(value || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
 }
 
+function containsMention(text, name) {
+  const token = `@${name}`;
+  for (let index = text.indexOf(token); index >= 0; index = text.indexOf(token, index + token.length)) {
+    const next = text[index + token.length];
+    if (next === undefined || /[\s.,!?，。！？、:：;；)）\]】}]/u.test(next)) return true;
+  }
+  return false;
+}
+
 function safeFilename(value) {
   const cleaned = path.basename(cleanText(value, 180)).replace(/[\\/:*?"<>|]/g, '_');
   return cleaned || '未命名文件';
@@ -229,7 +238,16 @@ const server = http.createServer(async (req, res) => {
       const chat = chats.get(cleanText(body.chatId, 140));
       if (!text) return json(res, 400, { error: '消息不能为空' });
       if (!canAccess(chat, senderId)) return json(res, 403, { error: '无权访问该会话' });
-      return json(res, 201, addEvent(chat, { type: 'message', senderId, text }));
+      const allowedIds = new Set(chat.members || [...profiles.keys()]);
+      const seenMentionIds = new Set();
+      const mentions = Array.isArray(body.mentions) ? body.mentions.slice(0, 20).map(mention => {
+        const id = cleanText(mention?.id, 80);
+        const profile = profiles.get(id);
+        if (!profile || !allowedIds.has(id) || seenMentionIds.has(id) || !containsMention(text, profile.name)) return null;
+        seenMentionIds.add(id);
+        return { id, name: profile.name };
+      }).filter(Boolean) : [];
+      return json(res, 201, addEvent(chat, { type: 'message', senderId, text, mentions }));
     }
 
     if (req.method === 'POST' && url.pathname === '/api/files') {

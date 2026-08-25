@@ -20,8 +20,8 @@
 
       <div class="section-title"><span data-i18n="会话">会话</span><button id="newGroup" title="新建群聊" aria-label="新建群聊" data-i18n-title="新建群聊" data-i18n-label="新建群聊">＋</button></div>
       <div class="chat-tabs" id="chatTabs" role="tablist" aria-label="会话类型">
-        <button class="active" type="button" role="tab" data-chat-tab="group" aria-selected="true" data-i18n="群聊">群聊</button>
-        <button type="button" role="tab" data-chat-tab="dm" aria-selected="false" data-i18n="单聊">单聊</button>
+        <button class="active" type="button" role="tab" data-chat-tab="group" aria-selected="true"><span data-i18n="群聊">群聊</span><b class="tab-unread hidden" id="groupUnread" aria-label="群聊未读消息">0</b></button>
+        <button type="button" role="tab" data-chat-tab="dm" aria-selected="false"><span data-i18n="单聊">单聊</span><b class="tab-unread hidden" id="dmUnread" aria-label="单聊未读消息">0</b></button>
       </div>
       <nav id="chatList" class="chat-list"></nav>
 
@@ -40,6 +40,8 @@
       <div class="drop-hint" id="dropHint"><strong>松开发送到当前会话</strong></div>
       <footer class="composer">
         <div id="uploadProgress" class="upload-progress hidden"><span id="uploadText"></span><div><i id="uploadBar"></i></div></div>
+        <div id="pendingAttachments" class="pending-attachments hidden"></div>
+        <div id="mentionMenu" class="mention-menu hidden" role="listbox"></div>
         <form id="messageForm">
           <label class="attach" title="选择文件"><input id="fileInput" type="file" multiple><span>＋</span></label>
           <button class="emoji-toggle" id="emojiToggle" type="button" title="选择表情" aria-label="选择表情">☺</button>

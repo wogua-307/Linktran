@@ -42,6 +42,7 @@ function createStorage(dataDir) {
       file_name TEXT,
       file_size INTEGER,
       file_url TEXT,
+      mentions TEXT,
       created_at INTEGER NOT NULL,
       UNIQUE (chat_id, sequence)
     ) STRICT;
@@ -53,6 +54,8 @@ function createStorage(dataDir) {
   const profileColumns = new Set(db.prepare('PRAGMA table_info(profiles)').all().map(column => column.name));
   if (!profileColumns.has('platform')) db.exec("ALTER TABLE profiles ADD COLUMN platform TEXT NOT NULL DEFAULT 'unknown'");
   if (!profileColumns.has('client_type')) db.exec("ALTER TABLE profiles ADD COLUMN client_type TEXT NOT NULL DEFAULT 'web'");
+  const messageColumns = new Set(db.prepare('PRAGMA table_info(messages)').all().map(column => column.name));
+  if (!messageColumns.has('mentions')) db.exec('ALTER TABLE messages ADD COLUMN mentions TEXT');
 
   db.prepare(`
     INSERT OR IGNORE INTO chats (id, type, name, created_at)
@@ -69,8 +72,8 @@ function createStorage(dataDir) {
     insertMember: db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, profile_id) VALUES (?, ?)'),
     nextSequence: db.prepare('SELECT COALESCE(MAX(sequence), 0) + 1 AS sequence FROM messages WHERE chat_id = ?'),
     insertMessage: db.prepare(`
-      INSERT INTO messages (id, chat_id, sender_id, sequence, type, text, file_name, file_size, file_url, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (id, chat_id, sender_id, sequence, type, text, file_name, file_size, file_url, mentions, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     fileByUrl: db.prepare('SELECT file_name AS name FROM messages WHERE file_url = ? AND type = \'file\''),
     profiles: db.prepare('SELECT id, name, avatar, platform, client_type AS clientType FROM profiles ORDER BY updated_at'),
@@ -79,7 +82,7 @@ function createStorage(dataDir) {
     histories: db.prepare(`
       SELECT * FROM (
         SELECT id, chat_id AS chatId, sender_id AS senderId, sequence, type, text,
-               file_name AS fileName, file_size AS fileSize, file_url AS fileUrl, created_at AS time
+               file_name AS fileName, file_size AS fileSize, file_url AS fileUrl, mentions, created_at AS time
         FROM messages WHERE chat_id = ? ORDER BY sequence DESC LIMIT ?
       ) ORDER BY sequence
     `)
@@ -111,6 +114,7 @@ function createStorage(dataDir) {
         item.type === 'file' ? item.file.name : null,
         item.type === 'file' ? item.file.size : null,
         item.type === 'file' ? item.file.url : null,
+        item.type === 'message' && item.mentions?.length ? JSON.stringify(item.mentions) : null,
         item.time
       );
       db.exec('COMMIT');
@@ -127,7 +131,10 @@ function createStorage(dataDir) {
       sequence: Number(row.sequence), type: row.type, time: Number(row.time)
     };
     if (row.type === 'file') item.file = { name: row.fileName, size: Number(row.fileSize), url: row.fileUrl };
-    else item.text = row.text;
+    else {
+      item.text = row.text;
+      try { item.mentions = JSON.parse(row.mentions || '[]'); } catch { item.mentions = []; }
+    }
     return item;
   }
 

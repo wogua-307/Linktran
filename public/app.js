@@ -12,6 +12,11 @@ let updateResult = null;
 let updateChecking = false;
 let relayInfo = null;
 let relayClientId = null;
+let mentionCandidates = [];
+let mentionIndex = 0;
+const selectedMentions = new Map();
+let pendingAttachments = [];
+let sendingMessage = false;
 let source;
 let activeChatId = 'lobby';
 let activeChatTab = 'group';
@@ -139,10 +144,11 @@ async function requestNotificationPermission() {
 function notifyNewMessage(item) {
   if (!notificationsEnabled) return;
   const sender = profileFor(item.senderId);
+  const mentioned = item.mentions?.some(mention => mention.id === clientId);
   const content = item.type === 'file' ? t('发送了文件：{name}', { name: item.file.name }) : item.text;
   showToast(`${sender.name}：${content.slice(0, 50)}`);
   if ('Notification' in globalThis && Notification.permission === 'granted') {
-    const notification = new Notification(`${t('邻传')} · ${sender.name}`, { body: content.slice(0, 120), icon: '/logo.svg', tag: item.chatId });
+    const notification = new Notification(`${mentioned ? t('有人@你') + ' · ' : ''}${t('邻传')} · ${sender.name}`, { body: content.slice(0, 120), icon: '/logo.svg', tag: item.chatId });
     notification.onclick = () => { globalThis.focus(); selectChat(item.chatId); notification.close(); };
   }
 }
@@ -252,8 +258,9 @@ function connect() {
     const chat = chats.get(item.chatId);
     if (!chat) return;
     if (!chat.history.some(existing => existing.id === item.id)) chat.history.push(item);
+    const viewingActiveChat = item.chatId === activeChatId && document.visibilityState === 'visible' && document.hasFocus();
     if (item.chatId === activeChatId) renderEvent(item);
-    else if (item.senderId !== clientId) {
+    if (item.senderId !== clientId && !viewingActiveChat) {
       unreadCounts.set(item.chatId, (unreadCounts.get(item.chatId) || 0) + 1);
       updateDocumentTitle(); notifyNewMessage(item);
     }
@@ -275,6 +282,18 @@ function renderChats() {
     const unread = unreadCounts.get(chat.id) || 0;
     return `<button class="chat-row${chat.id === activeChatId ? ' active' : ''}" data-chat-id="${escapeHtml(chat.id)}">${chatAvatar(chat)}<span class="chat-content"><strong>${escapeHtml(chatLabel(chat))}</strong><small>${escapeHtml(preview)}</small></span>${unread ? `<b class="unread-badge">${unread > 99 ? '99+' : unread}</b>` : ''}</button>`;
   }).join('');
+
+  const totals = { group: 0, dm: 0 };
+  for (const [chatId, count] of unreadCounts) {
+    const chat = chats.get(chatId);
+    if (!chat) continue;
+    totals[chat.type === 'dm' ? 'dm' : 'group'] += count;
+  }
+  for (const [type, total] of Object.entries(totals)) {
+    const badge = $(`#${type}Unread`);
+    badge.textContent = total > 99 ? '99+' : total;
+    badge.classList.toggle('hidden', total === 0);
+  }
 }
 
 function setChatTab(tab) {
@@ -306,6 +325,10 @@ function updateChatHeader() {
 
 function selectChat(chatId) {
   if (!chats.has(chatId)) return;
+  if (sendingMessage && chatId !== activeChatId) return showToast(t('消息发送中，请稍候'));
+  if (chatId !== activeChatId) {
+    selectedMentions.clear(); closeMentionMenu(); clearPendingAttachments();
+  }
   activeChatId = chatId;
   unreadCounts.delete(chatId); updateDocumentTitle();
   setChatTab(chats.get(chatId).type === 'dm' ? 'dm' : 'group');
@@ -340,7 +363,7 @@ function renderEvent(item) {
   const extension = item.type === 'file' ? (item.file.name.split('.').pop() || 'FILE').slice(0, 4) : '';
   const content = item.type === 'file'
     ? `<a class="file-card" href="${item.file.url}"><span class="file-icon">${escapeHtml(extension)}</span><span class="file-details"><strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small></span><span class="download">↓</span></a>`
-    : `<div class="message-shell"><div class="bubble markdown-body">${LinktranMarkdown.render(item.text)}</div><button class="copy-message" type="button" title="${t('复制消息')}" aria-label="${t('复制消息')}">⧉</button></div>`;
+    : `<div class="message-shell"><div class="bubble markdown-body">${renderMessageText(item)}</div><button class="copy-message" type="button" title="${t('复制消息')}" aria-label="${t('复制消息')}">⧉</button></div>`;
   const article = document.createElement('article');
   article.className = `event${mine ? ' mine' : ''}`;
   article.dataset.senderId = item.senderId;
@@ -352,6 +375,27 @@ function renderEvent(item) {
   $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
 }
 
+function renderMessageText(item) {
+  const wrapper = document.createElement('div'); wrapper.innerHTML = LinktranMarkdown.render(item.text);
+  const mentions = item.mentions || [];
+  if (!mentions.length) return wrapper.innerHTML;
+  const walker = document.createTreeWalker(wrapper, NodeFilter.SHOW_TEXT);
+  const nodes = []; for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
+  for (const node of nodes) {
+    const matches = [...new Set(mentions.map(mention => `@${mention.name}`).filter(value => node.nodeValue.includes(value)))].sort((a, b) => b.length - a.length);
+    if (!matches.length) continue;
+    const pattern = new RegExp(`(${matches.map(value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?=$|[\\s.,!?，。！？、:：;；)）\\]】}])`, 'gu');
+    const fragment = document.createDocumentFragment();
+    node.nodeValue.split(pattern).filter(Boolean).forEach(part => {
+      const mention = mentions.find(item => `@${item.name}` === part);
+      if (!mention) fragment.append(part);
+      else { const mark = document.createElement('mark'); mark.className = `mention${mention.id === clientId ? ' mention-me' : ''}`; mark.textContent = part; fragment.append(mark); }
+    });
+    node.replaceWith(fragment);
+  }
+  return wrapper.innerHTML;
+}
+
 async function createChat(type, members, name = '') {
   const response = await fetch('/api/chats', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -361,16 +405,16 @@ async function createChat(type, members, name = '') {
   const chat = await response.json(); chats.set(chat.id, chat); selectChat(chat.id); return chat;
 }
 
-async function sendMessage(text) {
-  const response = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: clientId, chatId: activeChatId, text }) });
+async function sendMessage(chatId, text, mentions = []) {
+  const response = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: clientId, chatId, text, mentions }) });
   if (!response.ok) throw new Error((await response.json()).error);
 }
 
-function uploadFile(file) {
+function uploadFile(file, chatId) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/files');
     xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
-    xhr.setRequestHeader('X-Client-Id', clientId); xhr.setRequestHeader('X-Chat-Id', activeChatId);
+    xhr.setRequestHeader('X-Client-Id', clientId); xhr.setRequestHeader('X-Chat-Id', chatId);
     xhr.upload.onprogress = event => {
       const percent = event.lengthComputable ? Math.round(event.loaded / event.total * 100) : 0;
       $('#uploadText').textContent = t('正在发送 {name} · {percent}%', { name: file.name, percent }); $('#uploadBar').style.width = `${percent}%`;
@@ -381,10 +425,81 @@ function uploadFile(file) {
 }
 
 async function uploadFiles(files) {
-  if (!files.length) return; const progress = $('#uploadProgress'); progress.classList.remove('hidden');
-  try { for (const file of files) await uploadFile(file); showToast(t('{count} 个文件发送完成', { count: files.length })); }
+  if (!files.length) return; const chatId = activeChatId; const progress = $('#uploadProgress'); progress.classList.remove('hidden');
+  try { for (const file of files) await uploadFile(file, chatId); showToast(t('{count} 个文件发送完成', { count: files.length })); }
   catch (error) { showToast(error.message); }
   finally { progress.classList.add('hidden'); $('#uploadBar').style.width = '0'; $('#fileInput').value = ''; }
+}
+
+function mentionableDevices() {
+  const chat = chats.get(activeChatId);
+  if (!chat || chat.type === 'dm') return [];
+  const memberIds = chat.members ? new Set(chat.members) : null;
+  return onlineDevices.filter(profile => profile.id !== clientId && (!memberIds || memberIds.has(profile.id)));
+}
+
+function closeMentionMenu() { mentionCandidates = []; $('#mentionMenu').classList.add('hidden'); }
+
+function updateMentionMenu() {
+  const input = $('#messageInput'); const beforeCaret = input.value.slice(0, input.selectionStart);
+  const match = beforeCaret.match(/(?:^|\s)@([^\s@]*)$/);
+  if (!match) return closeMentionMenu();
+  const query = match[1].toLocaleLowerCase();
+  mentionCandidates = mentionableDevices().filter(profile => profile.name.toLocaleLowerCase().includes(query));
+  if (!mentionCandidates.length) return closeMentionMenu();
+  mentionIndex = Math.min(mentionIndex, mentionCandidates.length - 1);
+  $('#mentionMenu').innerHTML = mentionCandidates.map((profile, index) => `<button type="button" role="option" data-mention-index="${index}" class="${index === mentionIndex ? 'active' : ''}">${avatarHtml(profile)}<span><strong>${escapeHtml(profile.name)}</strong><small>${escapeHtml(deviceKindLabel(profile))}</small></span></button>`).join('');
+  $('#mentionMenu').classList.remove('hidden');
+}
+
+function selectMention(index) {
+  const profile = mentionCandidates[index]; if (!profile) return;
+  const input = $('#messageInput'); const caret = input.selectionStart;
+  const before = input.value.slice(0, caret); const match = before.match(/(?:^|\s)@([^\s@]*)$/);
+  if (!match) return closeMentionMenu();
+  const atIndex = before.lastIndexOf('@'); const inserted = `@${profile.name} `;
+  input.value = `${input.value.slice(0, atIndex)}${inserted}${input.value.slice(caret)}`;
+  const nextCaret = atIndex + inserted.length; input.setSelectionRange(nextCaret, nextCaret);
+  selectedMentions.set(profile.id, { id: profile.id, name: profile.name });
+  closeMentionMenu(); input.dispatchEvent(new Event('input')); input.focus();
+}
+
+function queueAttachments(files) {
+  const additions = [...files].filter(file => file?.size > 0).slice(0, Math.max(0, 10 - pendingAttachments.length)).map(file => ({ file, preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : '' }));
+  pendingAttachments.push(...additions); renderPendingAttachments();
+}
+
+function clipboardFiles(clipboardData) {
+  const files = [...(clipboardData?.files || [])];
+  for (const item of clipboardData?.items || []) {
+    if (item.kind !== 'file') continue;
+    const file = item.getAsFile();
+    if (file && !files.some(existing => existing.name === file.name && existing.size === file.size && existing.type === file.type)) files.push(file);
+  }
+  return files;
+}
+
+function clearPendingAttachments() {
+  pendingAttachments.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
+  pendingAttachments = []; renderPendingAttachments();
+}
+
+function renderPendingAttachments() {
+  const tray = $('#pendingAttachments'); tray.classList.toggle('hidden', !pendingAttachments.length);
+  tray.innerHTML = pendingAttachments.map((item, index) => `<div class="pending-attachment">${item.preview ? `<img src="${item.preview}" alt="">` : `<span class="pending-file-icon">${escapeHtml((item.file.name.split('.').pop() || 'FILE').slice(0, 4))}</span>`}<p><strong>${escapeHtml(item.file.name)}</strong><small>${formatSize(item.file.size)}</small></p><button type="button" data-remove-attachment="${index}" title="${t('移除附件')}" aria-label="${t('移除附件')}">×</button></div>`).join('');
+}
+
+async function sendPendingAttachments(chatId, attachments) {
+  if (!attachments.length) return;
+  const progress = $('#uploadProgress'); progress.classList.remove('hidden');
+  try {
+    while (attachments.length) {
+      const item = attachments[0];
+      await uploadFile(item.file, chatId);
+      attachments.shift();
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    }
+  } finally { progress.classList.add('hidden'); $('#uploadBar').style.width = '0'; }
 }
 
 function openGroupDialog() {
@@ -510,12 +625,34 @@ $('#checkUpdate').addEventListener('click', async () => {
 });
 
 $('#messageForm').addEventListener('submit', async event => {
-  event.preventDefault(); const input = $('#messageInput'); const text = input.value.trim(); if (!text) return;
-  input.value = ''; input.style.height = 'auto';
-  try { await sendMessage(text); } catch (error) { input.value = text; showToast(error.message); }
+  event.preventDefault(); const input = $('#messageInput'); const text = input.value.trim(); if (sendingMessage || (!text && !pendingAttachments.length)) return;
+  const chatId = activeChatId;
+  const mentions = [...selectedMentions.values()].filter(mention => text.includes(`@${mention.name}`));
+  const attachments = pendingAttachments;
+  pendingAttachments = [];
+  input.value = ''; input.style.height = 'auto'; selectedMentions.clear(); closeMentionMenu(); renderPendingAttachments();
+  sendingMessage = true; $('.send').disabled = true;
+  try {
+    await sendPendingAttachments(chatId, attachments);
+    if (text) await sendMessage(chatId, text, mentions);
+  } catch (error) {
+    if (activeChatId === chatId) {
+      input.value = input.value ? `${text}\n${input.value}` : text;
+      input.dispatchEvent(new Event('input'));
+      mentions.forEach(mention => selectedMentions.set(mention.id, mention));
+      pendingAttachments.unshift(...attachments); renderPendingAttachments();
+    } else {
+      attachments.forEach(item => { if (item.preview) URL.revokeObjectURL(item.preview); });
+    }
+    showToast(error.message);
+  } finally {
+    sendingMessage = false; $('.send').disabled = false;
+  }
 });
-$('#messageInput').addEventListener('input', event => { event.target.style.height = 'auto'; event.target.style.height = `${event.target.scrollHeight}px`; });
+$('#messageInput').addEventListener('input', event => { event.target.style.height = 'auto'; event.target.style.height = `${event.target.scrollHeight}px`; updateMentionMenu(); });
 $('#messageInput').addEventListener('paste', event => {
+  const files = clipboardFiles(event.clipboardData);
+  if (files.length) { event.preventDefault(); queueAttachments(files); return; }
   const markdown = LinktranRichPaste.convert(event.clipboardData);
   if (!markdown) return;
   event.preventDefault();
@@ -530,8 +667,24 @@ $('#messageInput').addEventListener('paste', event => {
   input.dispatchEvent(new Event('input'));
   if (inserted.length < markdown.length) showToast(t('内容已按 {count} 字上限截断', { count: input.maxLength }));
 });
-$('#messageInput').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#messageForm').requestSubmit(); } });
+$('#messageInput').addEventListener('keydown', event => {
+  if (mentionCandidates.length && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
+    event.preventDefault();
+    if (event.key === 'ArrowDown') mentionIndex = (mentionIndex + 1) % mentionCandidates.length;
+    else if (event.key === 'ArrowUp') mentionIndex = (mentionIndex - 1 + mentionCandidates.length) % mentionCandidates.length;
+    else if (event.key === 'Enter') return selectMention(mentionIndex);
+    else return closeMentionMenu();
+    return updateMentionMenu();
+  }
+  if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#messageForm').requestSubmit(); }
+});
 $('#fileInput').addEventListener('change', event => uploadFiles([...event.target.files]));
+$('#mentionMenu').addEventListener('mousedown', event => { const button = event.target.closest('[data-mention-index]'); if (button) { event.preventDefault(); selectMention(Number(button.dataset.mentionIndex)); } });
+$('#pendingAttachments').addEventListener('click', event => {
+  const button = event.target.closest('[data-remove-attachment]'); if (!button) return;
+  const [item] = pendingAttachments.splice(Number(button.dataset.removeAttachment), 1);
+  if (item?.preview) URL.revokeObjectURL(item.preview); renderPendingAttachments();
+});
 $('#toggleSidebar').addEventListener('click', () => $('.sidebar').classList.toggle('open'));
 document.addEventListener('click', event => { if (innerWidth <= 700 && $('.sidebar').classList.contains('open') && !event.target.closest('.sidebar') && !event.target.closest('#toggleSidebar')) $('.sidebar').classList.remove('open'); });
 let dragDepth = 0;
@@ -539,6 +692,12 @@ document.addEventListener('dragenter', event => { event.preventDefault(); dragDe
 document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('.chat').classList.remove('dragging'); } });
 document.addEventListener('dragover', event => event.preventDefault());
 document.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('.chat').classList.remove('dragging'); uploadFiles([...event.dataTransfer.files]); });
+function markActiveChatRead() {
+  if (document.visibilityState !== 'visible' || !document.hasFocus() || !unreadCounts.has(activeChatId)) return;
+  unreadCounts.delete(activeChatId); updateDocumentTitle(); renderChats();
+}
+document.addEventListener('visibilitychange', markActiveChatRead);
+globalThis.addEventListener('focus', markActiveChatRead);
 globalThis.addEventListener('linktran:localechange', () => {
   renderChats(); renderDevices(); updateChatHeader(); renderMessages(); updateDocumentTitle(); renderUpdateStatus(); renderRelayInfo();
 });

@@ -20,6 +20,7 @@
     '前往下载': 'Download', '检查更新失败': 'Unable to check for updates',
     '正在识别中转节点…': 'Identifying relay…', '中转节点：{name}': 'Relay: {name}', '本机中转': 'This device is the relay',
     '中转节点': 'Relay', '桌面客户端 · 应用数据': 'Desktop client · App data', 'Web 服务 · 项目数据': 'Web service · Project data',
+    '有人@你': 'Mentioned you', '移除附件': 'Remove attachment', '消息发送中，请稍候': 'Message is being sent. Please wait.',
     '新消息提醒': 'New message notifications',
     '在其他会话收到消息时显示提醒': 'Show alerts for messages received in other chats', '保存资料': 'Save profile',
     '手机与电脑需连接同一个 Wi-Fi': 'Your phone and computer must use the same Wi-Fi',
