@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [1.0.3] - 2026-08-25
+
 ### 新增
 
 - 消息输入框支持通过 `@` 选择并提及当前会话的在线设备。
@@ -54,7 +56,8 @@
 - 支持 macOS Intel、macOS Apple Silicon 和 Windows x64 客户端。
 - macOS 和 Windows 客户端支持系统托盘。
 
-[未发布]: https://github.com/wogua-307/Linktran/compare/v1.0.2...HEAD
+[未发布]: https://github.com/wogua-307/Linktran/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/wogua-307/Linktran/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/wogua-307/Linktran/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/wogua-307/Linktran/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/wogua-307/Linktran/releases/tag/v1.0.0

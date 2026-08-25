@@ -1,7 +1,7 @@
 {
   "name": "@linktran/desktop",
   "productName": "邻传",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "同一 Wi-Fi 下的消息与文件传输工具",
   "author": {
     "name": "窝瓜",
