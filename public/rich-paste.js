@@ -11,7 +11,7 @@
     strongDelimiter: '**'
   });
   service.use(turndownPluginGfm.gfm);
-  const richElementPattern = /<(?:h[1-6]|strong|b|em|i|s|del|a|ul|ol|li|blockquote|pre|code|table|thead|tbody|tr|th|td|input)\b/i;
+  const richElementPattern = /<(?:h[1-6]|p|div|section|article|span|strong|b|em|i|u|s|del|a|img|br|ul|ol|li|blockquote|pre|code|table|thead|tbody|tr|th|td|input|figure|figcaption)\b/i;
 
   globalThis.LinktranRichPaste = {
     convert(clipboardData) {

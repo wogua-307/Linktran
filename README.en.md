@@ -27,6 +27,8 @@ Linktran is a local-network messaging and file-transfer tool for offices, homes,
 - Structured `@` mentions for online devices in group chats and the shared space
 - Paste clipboard images or files into the composer, preview them, and send together
 - Rich-text paste converted to Markdown
+- Compact image preview cards inside messages, with image labels and loading-error feedback; ordinary image URLs open the original, while linked images keep their existing destination
+- Messages up to a 100,000 UTF-16 code-unit safety limit, preserving newlines and tabs; oversized messages are rejected without silent truncation
 - One-click message copying
 - Drag-and-drop and batch file uploads, up to 1 GB per file
 - SQLite persistence for profiles, chats, messages, and files

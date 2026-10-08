@@ -34,7 +34,7 @@
     '所有设备都能看到': 'Visible to all devices', '暂无消息': 'No messages yet', '（本机）': ' (this device)',
     '当前设备': 'Current device', '点击发起单聊': 'Click to start a chat', '{count} 台设备在线': '{count} devices online',
     '在线': 'Online', '离线': 'Offline', '{count} 位成员': '{count} members', '这里还没有消息': 'No messages here yet',
-    '复制消息': 'Copy message', '我': 'Me', '消息已复制': 'Message copied', '正在发送 {name} · {percent}%': 'Sending {name} · {percent}%',
+    '复制消息': 'Copy message', '图片': 'Image', '图片加载失败': 'Image unavailable', '点击查看原图': 'Click to view original', '我': 'Me', '消息已复制': 'Message copied', '正在发送 {name} · {percent}%': 'Sending {name} · {percent}%',
     '网络连接失败': 'Network connection failed', '{count} 个文件发送完成': '{count} files sent',
     '暂无其他在线设备': 'No other devices online', '请选择 PNG、JPG 或 WebP 图片': 'Choose a PNG, JPG, or WebP image',
     '头像读取失败': 'Failed to read avatar', '头像格式不支持': 'Unsupported avatar format',

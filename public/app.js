@@ -382,11 +382,43 @@ function renderEvent(item) {
     try { await copyText(item.text); showToast(t('消息已复制')); }
     catch (error) { showToast(error.message); }
   });
+  article.querySelectorAll('.markdown-image-card img').forEach(image => {
+    const showImageError = () => {
+      const card = image.closest('.markdown-image-card');
+      card.classList.add('image-unavailable');
+      card.querySelector('.markdown-image-label').textContent = t('图片加载失败');
+    };
+    image.addEventListener('error', showImageError, { once: true });
+    if (image.complete && !image.naturalWidth) showImageError();
+  });
   $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
 }
 
 function renderMessageText(item) {
   const wrapper = document.createElement('div'); wrapper.innerHTML = LinktranMarkdown.render(item.text);
+  wrapper.querySelectorAll('img').forEach(image => {
+    ['style', 'width', 'height'].forEach(attribute => image.removeAttribute(attribute));
+    image.loading = 'lazy'; image.decoding = 'async';
+    const card = document.createElement('span'); card.className = 'markdown-image-card';
+    const label = document.createElement('span'); label.className = 'markdown-image-label';
+    label.textContent = image.alt?.trim() ? `${t('图片')} · ${image.alt.trim()}` : t('图片');
+    const parentLink = image.closest('a');
+    image.replaceWith(card);
+    if (parentLink) {
+      parentLink.classList.add('markdown-image-link');
+      card.append(image, label);
+    } else {
+      const src = image.getAttribute('src');
+      let url = null;
+      try { if (src) url = new URL(src, location.href); } catch { /* Invalid image URLs still show a card. */ }
+      if (url && ['http:', 'https:'].includes(url.protocol)) {
+        const link = document.createElement('a'); link.className = 'markdown-image-link';
+        link.href = src; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.title = t('点击查看原图');
+        link.append(image); card.append(link);
+      } else card.append(image);
+      card.append(label);
+    }
+  });
   const mentions = item.mentions || [];
   if (!mentions.length) return wrapper.innerHTML;
   const walker = document.createTreeWalker(wrapper, NodeFilter.SHOW_TEXT);

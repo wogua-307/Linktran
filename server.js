@@ -15,6 +15,7 @@ const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const HOST_TYPE = process.env.LINKTRAN_HOST_TYPE === 'desktop' ? 'desktop' : 'web';
 const HOST_INSTANCE_ID = process.env.LINKTRAN_HOST_INSTANCE_ID || crypto.randomUUID();
 const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+const MAX_MESSAGE_LENGTH = 100000;
 const PLATFORMS = new Set(['macos', 'windows', 'linux', 'ios', 'android', 'unknown']);
 const CLIENT_TYPES = new Set(['desktop', 'mobile', 'web', 'extension']);
 const clients = new Map();
@@ -51,6 +52,12 @@ function json(res, status, data) {
 
 function cleanText(value, max = 500) {
   return String(value || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
+}
+
+function cleanMessageText(value) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/\r\n?/g, '\n');
 }
 
 function containsMention(text, name) {
@@ -233,10 +240,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/messages') {
       const body = await readJson(req);
-      const text = cleanText(body.text, 2000);
+      const text = cleanMessageText(body.text);
       const senderId = cleanText(body.id, 80);
       const chat = chats.get(cleanText(body.chatId, 140));
-      if (!text) return json(res, 400, { error: '消息不能为空' });
+      if (!text.trim()) return json(res, 400, { error: '消息不能为空' });
+      if (text.length > MAX_MESSAGE_LENGTH) return json(res, 413, { error: `消息超过 ${MAX_MESSAGE_LENGTH} 字上限，请拆分发送` });
       if (!canAccess(chat, senderId)) return json(res, 403, { error: '无权访问该会话' });
       const allowedIds = new Set(chat.members || [...profiles.keys()]);
       const seenMentionIds = new Set();
